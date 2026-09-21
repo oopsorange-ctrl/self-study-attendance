@@ -374,9 +374,8 @@
 
   <div class="legend">
     <div class="legend-item"><span class="dot g3"></span>3학년 (1~50)</div>
-    <div class="legend-item"><span class="dot g2"></span>2학년 (51~99)</div>
+    <div class="legend-item"><span class="dot g2"></span>2학년 (51~100)</div>
     <div class="legend-item"><span class="dot g1"></span>1학년 (101~150)</div>
-    <div class="legend-item"><span class="dot blank"></span>미사용 자리 (100)</div>
     <div class="legend-item">입실중 = 자리 색이 진해지며 눌린 표현</div>
     <div class="legend-item"><span class="dot" style="background:#8e8e93;"></span>조퇴 (빗금 + 회색 테두리)</div>
   </div>
@@ -554,7 +553,7 @@ const blocks = [
   { zone:'yellow', type:'facingcol', color:'g2', left:[15,16,17,18,19,20,21], right:[28,27,26,25,24,23,22] },
   { zone:'yellow', type:'facingcol', color:'g2', left:[29,30,31,32,33,34,35], right:[42,41,40,39,38,37,36] },
   { zone:'yellow', type:'facingcol-mixed', leftColor:'g2', rightColor:'g1',
-    left:[43,44,45,46,47,48,49], right:[6,5,4,3,2,1,null] },
+    left:[43,44,45,46,47,48,49], right:[6,5,4,3,2,1,{n:50,c:'g2'}] },
 
   // ---------------- RED ZONE (1학년) ----------------
   { zone:'red', type:'row', color:'g1', nums:[7,8,9,10,11,12,13,14,15,16,17] },
@@ -601,10 +600,10 @@ function renderFacingCol(b){
   wrap.className = 'facing-col';
   const leftCol = document.createElement('div');
   leftCol.className = 'facing-col-sub';
-  b.left.forEach(n => leftCol.appendChild(makeSeat(b.color || b.leftColor, n)));
+  b.left.forEach(n => leftCol.appendChild(typeof n==='object'&&n!==null ? makeSeat(n.c, n.n) : makeSeat(b.color || b.leftColor, n)));
   const rightCol = document.createElement('div');
   rightCol.className = 'facing-col-sub';
-  b.right.forEach(n => rightCol.appendChild(makeSeat(b.color || b.rightColor, n)));
+  b.right.forEach(n => rightCol.appendChild(typeof n==='object'&&n!==null ? makeSeat(n.c, n.n) : makeSeat(b.color || b.rightColor, n)));
   wrap.appendChild(leftCol);
   wrap.appendChild(rightCol);
   return wrap;
