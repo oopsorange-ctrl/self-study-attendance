@@ -1276,14 +1276,19 @@ document.getElementById('uploadCsvBtn').addEventListener('click', ()=>{
 document.getElementById('csvFileInput').addEventListener('change', e=>{
   const file = e.target.files[0];
   if(!file) return;
-  const reader = new FileReader();
-  reader.onload = ev=>{
-    const parsed = parseRosterCsv(ev.target.result);
+  // 엑셀 CSV는 EUC-KR인 경우가 많아 인코딩을 자동 판별
+  file.arrayBuffer().then(buf=>{
+    let text;
+    try {
+      text = new TextDecoder('utf-8', { fatal:true }).decode(buf);   // UTF-8이 아니면 오류 발생
+    } catch(err) {
+      text = new TextDecoder('euc-kr').decode(buf);                   // 엑셀 기본 저장 형식
+    }
+    const parsed = parseRosterCsv(text);
     document.getElementById('rosterTextarea').value =
       parsed.map(p => [p.학번,p.이름,p.좌석번호,p.배정요일].join(',')).join('\n');
-    document.getElementById('rosterCount').textContent = parsed.length + '명을 읽었습니다. [명단 저장]을 눌러 반영하세요.';
-  };
-  reader.readAsText(file, 'UTF-8');
+    document.getElementById('rosterCount').textContent = parsed.length + '명을 읽었습니다. 이름이 제대로 보이는지 확인 후 [명단 저장]을 누르세요.';
+  });
   e.target.value = '';
 });
 
