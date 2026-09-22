@@ -338,6 +338,17 @@
   .badge-st.지각{ background:#fff4e0; color:#a35c00; }
   .badge-st.결석{ background:#ffeceb; color:#c0392b; }
   .badge-st.미입실{ background:#f0f0f2; color:#6e6e73; }
+  tr.warn-row{ background:#fff5f5; }
+  tr.warn-row td{ color:#c0392b; font-weight:600; }
+  .grade-card{
+    display:flex; gap:8px; flex-wrap:wrap;
+  }
+  .grade-box{
+    flex:1; min-width:150px; background:#f9f9fb; border-radius:12px; padding:12px 14px;
+  }
+  .grade-box .g-name{ font-size:13px; font-weight:600; margin-bottom:6px; }
+  .grade-box .g-line{ font-size:12px; color:var(--sub); line-height:1.7; }
+  .grade-box .g-rate{ font-size:20px; font-weight:600; color:var(--text); }
   .badge-st.조퇴{ background:#f0ebff; color:#5a3ec8; }
 
   /* ---- 구역 하단 빈 공간에 넣는 날짜/시계 표시(보기용) ---- */
@@ -420,6 +431,7 @@
       <div id="adminBody" style="display:none;">
         <div class="tabs">
           <button class="tab active" data-tab="today">오늘 현황</button>
+          <button class="tab" data-tab="monthly">월별 통계</button>
           <button class="tab" data-tab="roster">명단 관리</button>
           <button class="tab" data-tab="operation">운영일 관리</button>
           <button class="tab" data-tab="settings">설정</button>
@@ -444,6 +456,40 @@
               <tbody></tbody>
             </table>
           </div>
+        </div>
+
+        <!-- 탭: 월별 통계 -->
+        <div class="tab-panel" data-panel="monthly">
+          <div style="display:flex;gap:8px;align-items:flex-end;margin-bottom:14px;flex-wrap:wrap;">
+            <div class="field" style="margin-bottom:0;flex:1;min-width:150px;">
+              <label>조회할 달</label>
+              <input type="month" id="statMonth">
+            </div>
+            <div class="field" style="margin-bottom:0;width:120px;">
+              <label>학년</label>
+              <select id="statGrade">
+                <option value="">전체</option>
+                <option value="3학년">3학년</option>
+                <option value="2학년">2학년</option>
+                <option value="1학년">1학년</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" id="loadMonthlyBtn">조회</button>
+          </div>
+
+          <div id="monthlyMeta" class="hint" style="margin-bottom:12px;"></div>
+          <div id="gradeSummary" style="margin-bottom:14px;"></div>
+
+          <div class="btn-row" style="margin-bottom:8px;">
+            <button class="btn btn-sub" id="exportMonthlyBtn">CSV 내보내기</button>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="monthlyTable">
+              <thead><tr><th>좌석</th><th>이름</th><th>배정</th><th>출석</th><th>지각</th><th>조퇴</th><th>결석</th><th>출석률</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="hint">지각은 출석으로 인정됩니다. 결석 3회 이상은 붉게 표시됩니다.</div>
         </div>
 
         <!-- 탭: 명단 관리 -->
@@ -1185,6 +1231,11 @@ document.querySelectorAll('.tab').forEach(tab=>{
     document.querySelector('.tab-panel[data-panel="'+tab.dataset.tab+'"]').classList.add('active');
     if(tab.dataset.tab === 'today') renderTodayTable();
     if(tab.dataset.tab === 'roster') loadRosterToTextarea();
+    if(tab.dataset.tab === 'monthly'){
+      const el = document.getElementById('statMonth');
+      if(!el.value) el.value = todayStr().substring(0,7);
+      if(!monthlyData) loadMonthly();
+    }
   });
 });
 
@@ -1262,6 +1313,89 @@ function downloadFile(content, filename){
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+// ---------- 월별 통계 ----------
+let monthlyData = null;
+
+async function loadMonthly(){
+  const month = document.getElementById('statMonth').value || todayStr().substring(0,7);
+  const meta = document.getElementById('monthlyMeta');
+  meta.textContent = '불러오는 중...';
+
+  if(!apiUrl){
+    meta.textContent = '서버에 연결되어 있지 않아 월별 통계를 볼 수 없습니다.';
+    return;
+  }
+  try{
+    const res = await apiGet({ action:'monthly', month: month });
+    if(!res.ok){ meta.textContent = '조회 실패: ' + res.error; return; }
+    monthlyData = res;
+    renderMonthly();
+  }catch(e){
+    meta.textContent = '서버 연결에 실패했습니다.';
+  }
+}
+
+function renderMonthly(){
+  if(!monthlyData) return;
+  const filter = document.getElementById('statGrade').value;
+  const all = monthlyData.students || [];
+  const rows = filter ? all.filter(s => s.학년 === filter) : all;
+
+  document.getElementById('monthlyMeta').textContent =
+    monthlyData.month + ' · 운영일수 ' + monthlyData.운영일수 + '일 · 대상 ' + rows.length + '명';
+
+  // 학년별 요약
+  const grades = (monthlyData.grades || []).filter(g => !filter || g.학년 === filter);
+  const wrap = document.getElementById('gradeSummary');
+  if(!grades.length){
+    wrap.innerHTML = '';
+  } else {
+    wrap.innerHTML = '<div class="grade-card">' + grades.map(g =>
+      '<div class="grade-box">' +
+        '<div class="g-name">' + g.학년 + ' <span style="font-weight:400;color:#8e8e93">' + g.인원 + '명</span></div>' +
+        '<div class="g-rate">' + g.출석률 + '%</div>' +
+        '<div class="g-line">지각 ' + g.지각 + ' · 조퇴 ' + g.조퇴 + ' · 결석 ' + g.결석 + '</div>' +
+        '<div class="g-line" style="color:' + (g.경고대상 ? '#c0392b' : '#8e8e93') + '">경고 대상 ' + g.경고대상 + '명</div>' +
+      '</div>').join('') + '</div>';
+  }
+
+  const tbody = document.querySelector('#monthlyTable tbody');
+  tbody.innerHTML = '';
+  if(!rows.length){
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#8e8e93;padding:20px;">이 달에 기록된 데이터가 없습니다</td></tr>';
+    return;
+  }
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    if(r.경고) tr.className = 'warn-row';
+    tr.innerHTML =
+      '<td>'+r.좌석번호+'</td>'+
+      '<td>'+(r.이름||r.학번)+'</td>'+
+      '<td>'+r.배정일수+'</td>'+
+      '<td>'+r.출석+'</td>'+
+      '<td>'+r.지각+'</td>'+
+      '<td>'+r.조퇴+'</td>'+
+      '<td>'+r.결석+'</td>'+
+      '<td>'+r.출석률+'%</td>';
+    tbody.appendChild(tr);
+  });
+}
+
+document.getElementById('loadMonthlyBtn').addEventListener('click', loadMonthly);
+document.getElementById('statMonth').addEventListener('change', ()=>{ monthlyData=null; loadMonthly(); });
+document.getElementById('statGrade').addEventListener('change', renderMonthly);
+
+document.getElementById('exportMonthlyBtn').addEventListener('click', ()=>{
+  if(!monthlyData || !(monthlyData.students||[]).length){ showToast('내보낼 데이터가 없습니다', 2500); return; }
+  const filter = document.getElementById('statGrade').value;
+  const rows = filter ? monthlyData.students.filter(s=>s.학년===filter) : monthlyData.students;
+  let csv = '\uFEFF학년,좌석번호,학번,이름,배정일수,출석,지각,조퇴,결석,출석률,경고\n';
+  rows.forEach(r=>{
+    csv += [r.학년,r.좌석번호,r.학번,r.이름,r.배정일수,r.출석,r.지각,r.조퇴,r.결석,r.출석률+'%',r.경고?'경고':''].join(',') + '\n';
+  });
+  downloadFile(csv, '자기주도학습_월별통계_' + monthlyData.month + '.csv');
+});
 
 // ---------- 명단 관리 ----------
 document.getElementById('downloadTemplateBtn').addEventListener('click', ()=>{
