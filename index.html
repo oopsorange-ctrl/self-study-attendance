@@ -337,6 +337,7 @@
   .badge-st.출석{ background:#e3f7e8; color:#1c7a34; }
   .badge-st.지각{ background:#fff4e0; color:#a35c00; }
   .badge-st.결석{ background:#ffeceb; color:#c0392b; }
+  .badge-st.미입실{ background:#f0f0f2; color:#6e6e73; }
   .badge-st.조퇴{ background:#f0ebff; color:#5a3ec8; }
 
   /* ---- 구역 하단 빈 공간에 넣는 날짜/시계 표시(보기용) ---- */
@@ -431,7 +432,7 @@
             <div class="stat-box"><div class="s-num" id="statPresent">0</div><div class="s-label">출석</div></div>
             <div class="stat-box"><div class="s-num" id="statLate">0</div><div class="s-label">지각</div></div>
             <div class="stat-box"><div class="s-num" id="statEarly">0</div><div class="s-label">조퇴</div></div>
-            <div class="stat-box"><div class="s-num" id="statAbsent">0</div><div class="s-label">결석</div></div>
+            <div class="stat-box"><div class="s-num" id="statAbsent">0</div><div class="s-label">미입실</div></div>
           </div>
           <div class="btn-row">
             <button class="btn btn-sub" id="refreshTodayBtn">새로고침</button>
@@ -1196,7 +1197,7 @@ function buildTodaySummary(){
     const outRec = todayRecords.find(r => r.학번 === p.학번 && (r.구분 === '조퇴' || r.구분 === '완료'));
     return {
       좌석번호: p.좌석번호, 학번: p.학번, 이름: p.이름,
-      출결: inRec ? (inRec.출결 || '출석') : '결석',
+      출결: inRec ? (inRec.출결 || '출석') : '미입실',
       입실: inRec ? inRec.시각 : '',
       퇴실: outRec ? (outRec.구분 + ' ' + outRec.시각) : ''
     };
@@ -1212,7 +1213,7 @@ function renderTodayTable(){
   rows.forEach(r=>{
     if(r.출결 === '출석') present++;
     else if(r.출결 === '지각') late++;
-    else if(r.출결 === '결석') absent++;
+    else if(r.출결 === '미입실') absent++;
     if(r.퇴실 && r.퇴실.indexOf('조퇴') === 0) early++;
 
     const tr = document.createElement('tr');
