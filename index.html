@@ -496,7 +496,7 @@
           </div>
 
           <div class="field">
-            <label>Apps Script 웹 앱 URL</label>
+            <label>Apps Script 웹 앱 URL <span style="font-weight:400">(기본 주소 내장됨 · 서버를 새로 배포했을 때만 변경)</span></label>
             <input type="text" id="apiUrlInput" placeholder="https://script.google.com/macros/s/.../exec">
           </div>
           <div class="btn-row" style="margin-bottom:20px;">
@@ -841,7 +841,9 @@ const CFG = {
   지각기준분:5
 };
 
-let apiUrl = localStorage.getItem(LS_API) || '';
+// 서버 주소를 기본값으로 내장 → 어느 기기에서 열어도 바로 연결됨
+const DEFAULT_API = 'https://script.google.com/macros/s/AKfycbwIzMkhxabhujNDiV13CU31dprw-nB1uvJLnKrJmOWO3Iw2XlkNvCimunxNDR6eUDps/exec';
+let apiUrl = localStorage.getItem(LS_API) || DEFAULT_API;
 let adminPassword = '0409';          // 서버 연결 시 서버 값이 우선
 let roster = [];                     // [{학번,이름,좌석번호,배정요일}]
 let todayRecords = [];               // [{좌석번호,학번,이름,구분,시각,출결}]
@@ -1387,16 +1389,17 @@ document.getElementById('opOffBtn').addEventListener('click', ()=> setOperation(
 
 // ---------- 설정 ----------
 document.getElementById('saveApiBtn').addEventListener('click', async ()=>{
-  const url = document.getElementById('apiUrlInput').value.trim();
-  apiUrl = url;
-  localStorage.setItem(LS_API, url);
+  let url = document.getElementById('apiUrlInput').value.trim();
   const statusEl = document.getElementById('apiStatus');
-
   if(!url){
-    statusEl.textContent = 'URL이 비어 있어 로컬 모드로 동작합니다.';
-    updateSyncChip();
-    return;
+    // 칸을 비우면 내장된 기본 주소로 되돌림 (실수로 로컬 모드가 되는 것 방지)
+    url = DEFAULT_API;
+    localStorage.removeItem(LS_API);
+    document.getElementById('apiUrlInput').value = url;
+  } else {
+    localStorage.setItem(LS_API, url);
   }
+  apiUrl = url;
   statusEl.textContent = '연결 확인 중...';
   try{
     const res = await apiGet({ action:'state', date: todayStr() });
